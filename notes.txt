@@ -1,0 +1,7 @@
+Addresses I2C : 0b1110010X (0x76 et 0x77) #5.2
+
+Registre 0xD0 pour identifier : 0x58 expected
+Registre 0xF4 pour le mode : 0bXXXXXX11 pour normal
+Calib :  de 0x88 à 0xA1
+Press : 0xF7 0xF8 0xF9 (bits 7,6,5,4)
+Temp : 0xFA 0xFB 0xFC (bits 7,6,5,4)
