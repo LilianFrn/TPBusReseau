@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <strings.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,7 +43,7 @@ CAN_HandleTypeDef hcan1;
 
 I2C_HandleTypeDef hi2c1;
 
-UART_HandleTypeDef huart4;
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -54,6 +54,11 @@ uint8_t conf_set_snd[2] = {BMP280_CONF_REG, BMP280_CONF_SET};
 uint8_t conf_set_rcv = 0;
 
 uint8_t etal_rcv[26];
+
+int uart1_flag = 0;
+char uart1_buff;
+char uart1_word[32];
+int uart1_index = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,7 +67,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_UART4_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -103,7 +108,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_CAN1_Init();
   MX_I2C1_Init();
-  MX_UART4_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_I2C_Master_Transmit(&hi2c1, BMP280_SLV_ADD, &id_get_snd, BMP280_ID_SND_SIZE, HAL_MAX_DELAY);
   HAL_I2C_Master_Receive(&hi2c1, BMP280_SLV_ADD, &id_get_rcv, BMP280_ID_RCV_SIZE, HAL_MAX_DELAY);
@@ -123,18 +128,49 @@ int main(void)
 	  printf("ERROR : Slave configuration failed\r\n");
   }
   HAL_Delay(100);
-  etal_rcv[0]=1;
   HAL_I2C_Mem_Read(&hi2c1, BMP280_SLV_ADD, BMP280_ETAL_REG, 1,
 		  etal_rcv, BMP280_ETAL_RCV_SIZE, HAL_MAX_DELAY);
   printf("%x %x %x %x\r\n", etal_rcv[0], etal_rcv[4], etal_rcv[13], etal_rcv[25]);
+
+  HAL_UART_Receive_IT(&huart1, &uart1_buff, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  HAL_Delay(1000);
-    /* USER CODE END WHILE */
+	  if (uart1_flag == 1) {
+		  if (uart1_buff == 0x0D) {
+			  uart1_word[uart1_index] = 0;
+			  printf("%s\r\n", uart1_word);
+			  if (strcmp(uart1_word, "GET_T")==0) {
+				  HAL_UART_Transmit(&huart1, "\n274K\r\n", 7, HAL_MAX_DELAY);
+			  }
+			  else if (strcmp(uart1_word, "GET_P")==0) {
+				  HAL_UART_Transmit(&huart1, "\n1Bar\r\n", 7, HAL_MAX_DELAY);
+			  }
+			  else if (memcmp(uart1_word, "SET_K=", 6)==0) {
+				  HAL_UART_Transmit(&huart1, "\nOui\r\n", 6, HAL_MAX_DELAY);
+			  }
+			  else if (strcmp(uart1_word, "GET_K")==0) {
+			  	  HAL_UART_Transmit(&huart1, "\nK\r\n", 4, HAL_MAX_DELAY);
+			  }
+			  else if (strcmp(uart1_word, "GET_A")==0) {
+				  HAL_UART_Transmit(&huart1, "\nA\r\n", 4, HAL_MAX_DELAY);
+			  }
+			  else {
+				  HAL_UART_Transmit(&huart1, "\nUnknown\r\n", 10, HAL_MAX_DELAY);
+			  }
+		  uart1_word[0] = 0;
+		  uart1_index = 0;
+		  }
+		  else {
+			  uart1_word[uart1_index] = uart1_buff;
+			  uart1_index++;
+		  }
+	  uart1_flag = 0;
+	  }
+	/* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -260,35 +296,35 @@ static void MX_I2C1_Init(void)
 }
 
 /**
-  * @brief UART4 Initialization Function
+  * @brief USART1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_UART4_Init(void)
+static void MX_USART1_UART_Init(void)
 {
 
-  /* USER CODE BEGIN UART4_Init 0 */
+  /* USER CODE BEGIN USART1_Init 0 */
 
-  /* USER CODE END UART4_Init 0 */
+  /* USER CODE END USART1_Init 0 */
 
-  /* USER CODE BEGIN UART4_Init 1 */
+  /* USER CODE BEGIN USART1_Init 1 */
 
-  /* USER CODE END UART4_Init 1 */
-  huart4.Instance = UART4;
-  huart4.Init.BaudRate = 115200;
-  huart4.Init.WordLength = UART_WORDLENGTH_8B;
-  huart4.Init.StopBits = UART_STOPBITS_1;
-  huart4.Init.Parity = UART_PARITY_NONE;
-  huart4.Init.Mode = UART_MODE_TX_RX;
-  huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart4.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart4) != HAL_OK)
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN UART4_Init 2 */
+  /* USER CODE BEGIN USART1_Init 2 */
 
-  /* USER CODE END UART4_Init 2 */
+  /* USER CODE END USART1_Init 2 */
 
 }
 
