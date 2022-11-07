@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <strings.h>
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,6 +60,7 @@ int uart1_flag = 0;
 char uart1_buff;
 char uart1_word[32];
 int uart1_index = 0;
+float coeff = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -143,19 +145,28 @@ int main(void)
 		  if (uart1_buff == 0x0D) {
 			  uart1_word[uart1_index] = 0;
 			  printf("%s\r\n", uart1_word);
-			  if (strcmp(uart1_word, "GET_T")==0) {
+			  if (strcmp(uart1_word, "GET_T") == 0) {
 				  HAL_UART_Transmit(&huart1, "\n274K\r\n", 7, HAL_MAX_DELAY);
 			  }
-			  else if (strcmp(uart1_word, "GET_P")==0) {
+			  else if (strcmp(uart1_word, "GET_P") == 0) {
 				  HAL_UART_Transmit(&huart1, "\n1Bar\r\n", 7, HAL_MAX_DELAY);
 			  }
-			  else if (memcmp(uart1_word, "SET_K=", 6)==0) {
+			  else if (memcmp(uart1_word, "SET_K=", 6) == 0) {
+				  if (uart1_word[13] != 0) {
+					  HAL_UART_Transmit(&huart1, "\nInvalid number\r\n", 17, HAL_MAX_DELAY);
+				  }
+				  else {
+					  for (int i = 0; i < 7; i++) {
+						  coeff += (float)uart1_word[i+6] * pow(10, 1-i);
+					  }
+					  HAL_UART_Transmit(&huart1, "\nK set\r\n", 8, HAL_MAX_DELAY);
+				  }
 				  HAL_UART_Transmit(&huart1, "\nOui\r\n", 6, HAL_MAX_DELAY);
 			  }
-			  else if (strcmp(uart1_word, "GET_K")==0) {
+			  else if (strcmp(uart1_word, "GET_K") == 0) {
 			  	  HAL_UART_Transmit(&huart1, "\nK\r\n", 4, HAL_MAX_DELAY);
 			  }
-			  else if (strcmp(uart1_word, "GET_A")==0) {
+			  else if (strcmp(uart1_word, "GET_A") == 0) {
 				  HAL_UART_Transmit(&huart1, "\nA\r\n", 4, HAL_MAX_DELAY);
 			  }
 			  else {
