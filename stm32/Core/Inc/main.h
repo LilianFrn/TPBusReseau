@@ -72,20 +72,6 @@ void Error_Handler(void);
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-#define BMP280_SLV_ADD			(0x77 << 1)
-
-#define BMP280_ID_REG			0xD0
-#define BMP280_ID_EXP			0x58
-#define BMP280_ID_SND_SIZE		1
-#define BMP280_ID_RCV_SIZE		1
-
-#define BMP280_CONF_REG			0xF4
-#define BMP280_CONF_SET			0b01010111
-#define BMP280_CONF_SND_SIZE	2
-#define BMP280_CONF_RCV_SIZE	1
-
-#define BMP280_ETAL_REG			0x88
-#define BMP280_ETAL_RCV_SIZE	26
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

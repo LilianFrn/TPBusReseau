@@ -1,0 +1,6 @@
+../Core/Src/capt_api.c:27:9:bmp280_compensate_T_int32	32	static
+../Core/Src/capt_api.c:40:10:bmp280_compensate_P_int64	328	static
+../Core/Src/capt_api.c:61:6:capt_ping	24	static
+../Core/Src/capt_api.c:78:6:capt_param	56	static
+../Core/Src/capt_api.c:109:7:capt_temp	40	static
+../Core/Src/capt_api.c:124:7:capt_pres	40	static

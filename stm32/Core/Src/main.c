@@ -21,8 +21,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "mot_api.h"
+#include "capt_api.h"
+
 #include <strings.h>
 #include <math.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,19 +52,11 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint8_t id_get_snd = BMP280_ID_REG;
-uint8_t id_get_rcv = 0;
-
-uint8_t conf_set_snd[2] = {BMP280_CONF_REG, BMP280_CONF_SET};
-uint8_t conf_set_rcv = 0;
-
-uint8_t etal_rcv[26];
-
+extern int temp_flag;
 int uart1_flag = 0;
 char uart1_buff;
-char uart1_word[32];
 int uart1_index = 0;
-float coeff = 0;
+char uart1_word[32];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -86,7 +82,16 @@ static void MX_USART1_UART_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	int ret = 0;
+	int size = 0;
+	char sprintf_buff[32];
 
+	float K = 0;
+
+	float temp = 0;
+	float pres = 0;
+
+	uint8_t angle = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -112,27 +117,12 @@ int main(void)
   MX_I2C1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_I2C_Master_Transmit(&hi2c1, BMP280_SLV_ADD, &id_get_snd, BMP280_ID_SND_SIZE, HAL_MAX_DELAY);
-  HAL_I2C_Master_Receive(&hi2c1, BMP280_SLV_ADD, &id_get_rcv, BMP280_ID_RCV_SIZE, HAL_MAX_DELAY);
-  if (id_get_rcv == BMP280_ID_EXP){
-	  printf("Slave ID is 0x%x : Correct\r\n", id_get_rcv);
-  }
-  else {
-	  printf("ERROR : Slave ID is 0x%x : Incorrect\r\n", id_get_rcv);
-  }
+  HAL_CAN_Start(&hcan1);
 
-  HAL_I2C_Master_Transmit(&hi2c1, BMP280_SLV_ADD, conf_set_snd, BMP280_CONF_SND_SIZE, HAL_MAX_DELAY);
-  HAL_I2C_Master_Receive(&hi2c1, BMP280_SLV_ADD, &conf_set_rcv, BMP280_CONF_RCV_SIZE, HAL_MAX_DELAY);
-  if (conf_set_rcv == BMP280_CONF_SET){
-	  printf("Slave configuration set to desired parameters\r\n");
-  }
-  else {
-	  printf("ERROR : Slave configuration failed\r\n");
-  }
-  HAL_Delay(100);
-  HAL_I2C_Mem_Read(&hi2c1, BMP280_SLV_ADD, BMP280_ETAL_REG, 1,
-		  etal_rcv, BMP280_ETAL_RCV_SIZE, HAL_MAX_DELAY);
-  printf("%x %x %x %x\r\n", etal_rcv[0], etal_rcv[4], etal_rcv[13], etal_rcv[25]);
+  capt_ping();
+  capt_param();
+
+  mot_reset(&hcan1);
 
   HAL_UART_Receive_IT(&huart1, &uart1_buff, 1);
   /* USER CODE END 2 */
@@ -141,47 +131,83 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if (uart1_flag == 1) {
-		  if (uart1_buff == 0x0D) {
-			  uart1_word[uart1_index] = 0;
+	  if (uart1_flag == 1)
+	  {
+		  if (uart1_buff == 0x0D)
+		  {
+			  uart1_word[uart1_index-1] = 0;
 			  printf("%s\r\n", uart1_word);
+
+			  // Get temp
 			  if (strcmp(uart1_word, "GET_T") == 0) {
-				  HAL_UART_Transmit(&huart1, "\n274K\r\n", 7, HAL_MAX_DELAY);
+				  temp = capt_temp();
+				  size = sprintf(sprintf_buff, "%f", temp);
+				  HAL_UART_Transmit(&huart1, sprintf_buff, size, HAL_MAX_DELAY);
 			  }
+
+			  // Get pres
 			  else if (strcmp(uart1_word, "GET_P") == 0) {
-				  HAL_UART_Transmit(&huart1, "\n1Bar\r\n", 7, HAL_MAX_DELAY);
+				  pres = capt_pres();
+				  HAL_UART_Transmit(&huart2, "\n1Bar\r\n", 7, HAL_MAX_DELAY);
 			  }
+
+			  // Set K
 			  else if (memcmp(uart1_word, "SET_K=", 6) == 0) {
 				  if (uart1_word[13] != 0) {
-					  HAL_UART_Transmit(&huart1, "\nInvalid number\r\n", 17, HAL_MAX_DELAY);
+					  HAL_UART_Transmit(&huart2, "\nInvalid number\r\n", 17, HAL_MAX_DELAY);
 				  }
 				  else {
 					  for (int i = 0; i < 7; i++) {
-						  coeff += (float)uart1_word[i+6] * pow(10, 1-i);
+						  K += (float)uart1_word[i+6] * pow(10, 1-i);
 					  }
-					  HAL_UART_Transmit(&huart1, "\nK set\r\n", 8, HAL_MAX_DELAY);
+					  HAL_UART_Transmit(&huart2, "\nK set\r\n", 8, HAL_MAX_DELAY);
 				  }
-				  HAL_UART_Transmit(&huart1, "\nOui\r\n", 6, HAL_MAX_DELAY);
+				  HAL_UART_Transmit(&huart2, "\nOui\r\n", 6, HAL_MAX_DELAY);
 			  }
+
+			  // Get K
 			  else if (strcmp(uart1_word, "GET_K") == 0) {
-			  	  HAL_UART_Transmit(&huart1, "\nK\r\n", 4, HAL_MAX_DELAY);
+			  	  HAL_UART_Transmit(&huart2, "\nK\r\n", 4, HAL_MAX_DELAY);
 			  }
+
+			  // Get angle
 			  else if (strcmp(uart1_word, "GET_A") == 0) {
-				  HAL_UART_Transmit(&huart1, "\nA\r\n", 4, HAL_MAX_DELAY);
+				  angle = (int)(K * temp/100);
+				  HAL_UART_Transmit(&huart2, "\nA\r\n", 4, HAL_MAX_DELAY);
 			  }
+
+			  // Command undefined
 			  else {
-				  HAL_UART_Transmit(&huart1, "\nUnknown\r\n", 10, HAL_MAX_DELAY);
+				  HAL_UART_Transmit(&huart2, "\nUnknown\r\n", 10, HAL_MAX_DELAY);
 			  }
+
 		  uart1_word[0] = 0;
 		  uart1_index = 0;
 		  }
-		  else {
-			  uart1_word[uart1_index] = uart1_buff;
-			  uart1_index++;
-		  }
 	  uart1_flag = 0;
 	  }
-	/* USER CODE END WHILE */
+
+	  if (temp_flag == 1)
+	  {
+		  if (K == 0) {
+			  printf("Coeff is equal to 0, set it to get and angle\r\n");
+		  }
+		  else {
+			  angle = (int)(K * (temp/100));
+			  if (angle >= 0) {
+				  if (mot_angle(&hcan1, angle, MOT_ROT_CLK) != 0){
+					  printf("mot_angle command failed, error code %d\r\n", ret);
+				  }
+			  }
+			  else {
+				  if (mot_angle(&hcan1, -angle, MOT_ROT_ACLK) != 0){
+					  printf("mot_angle command failed, error code %d\r\n", ret);
+				  }
+			  }
+		  }
+		  temp_flag = 0;
+	  }
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -251,11 +277,11 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 16;
+  hcan1.Init.Prescaler = 14;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
-  hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_1TQ;
-  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan1.Init.SyncJumpWidth = CAN_SJW_2TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_2TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_3TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
   hcan1.Init.AutoWakeUp = DISABLE;

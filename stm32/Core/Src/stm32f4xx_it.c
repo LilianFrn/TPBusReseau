@@ -60,6 +60,8 @@ extern UART_HandleTypeDef huart2;
 /* USER CODE BEGIN EV */
 extern int uart1_flag;
 extern char uart1_buff;
+extern int uart1_index;
+extern char uart1_word[32];
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -206,13 +208,14 @@ void SysTick_Handler(void)
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
+  uart1_flag = 1;
   /* USER CODE END USART1_IRQn 0 */
-	uart1_flag = 1;
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
-  HAL_UART_Transmit(&huart1, &uart1_buff, 1, HAL_MAX_DELAY);
-
-   HAL_UART_Receive_IT(&huart1, &uart1_buff, 1);
+  HAL_UART_Transmit(&huart2, &uart1_buff, 1, HAL_MAX_DELAY);
+  uart1_word[uart1_index] = uart1_buff;
+  uart1_index++;
+  HAL_UART_Receive_IT(&huart1, &uart1_buff, 1);
   /* USER CODE END USART1_IRQn 1 */
 }
 
@@ -224,9 +227,7 @@ void USART2_IRQHandler(void)
   /* USER CODE BEGIN USART2_IRQn 0 */
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
-
   /* USER CODE BEGIN USART2_IRQn 1 */
-
   /* USER CODE END USART2_IRQn 1 */
 }
 
