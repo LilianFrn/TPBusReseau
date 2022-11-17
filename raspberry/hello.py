@@ -48,7 +48,7 @@ def api_temp():
     elif request.method == 'POST':
         ser.write(b"GET_T\r")
         new_temp = ser.readline()
-        temp_l.append(new_temp)
+        temp_l.append(str(new_temp))
         return "", 204
 
 @app.route('/api/temp/<int:index>', methods=['GET', 'DELETE'])
@@ -72,7 +72,7 @@ def api_pres():
     elif request.method == 'POST':
         ser.write(b"GET_P\r")
         new_pres = ser.readline()
-        pres_l.append(new_pres)
+        pres_l.append(str(new_pres))
         return "", 204
 
 @app.route('/api/pres/<int:index>', methods=['GET', 'DELETE'])
@@ -86,6 +86,28 @@ def api_pres_index(index):
     else:
         abort(404)
 
+@app.route('/api/scale/', methods=['GET', 'POST'])
+def api_scale():
+    if request.method == 'GET':
+        ser.write(b"GET_K\r")
+        new_k = ser.readline()
+        return str(new_k)
+    elif request.method == 'POST':
+        buffer = request.get_json()
+        if "Scale" in buffer:
+            new_k = buffer["Scale"]
+            comm = "SET_K=0"+str(new_k)+"\r"
+            ser.write(bytes(comm))
+            return "", 204
+        else:
+            return "No Scale parameter", 400
+
+@app.route('/api/angle/', methods=['GET'])
+def api_angle():
+    if request.method == 'GET':
+        ser.write(b"GET_A\r")
+        new_a = ser.readline()
+        return str(new_a)
 
 @app.errorhandler(404)
 def page_not_found(error):

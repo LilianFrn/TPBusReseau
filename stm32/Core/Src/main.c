@@ -86,11 +86,10 @@ int main(void)
 	int size = 0;
 	char sprintf_buff[32];
 
-	float K = 0;
-
+	// Stores latest values
 	float temp = 0;
 	float pres = 0;
-
+	float K = 0;
 	uint8_t angle = 0;
   /* USER CODE END 1 */
 
@@ -147,8 +146,9 @@ int main(void)
 
 			  // Get pres
 			  else if (strcmp(uart1_word, "GET_P") == 0) {
-				  pres = capt_pres();
-				  HAL_UART_Transmit(&huart2, "\n1Bar\r\n", 7, HAL_MAX_DELAY);
+				  pres = capt_temp();
+				  size = sprintf(sprintf_buff, "%f", pres);
+				  HAL_UART_Transmit(&huart1, sprintf_buff, size, HAL_MAX_DELAY);
 			  }
 
 			  // Set K
@@ -162,18 +162,19 @@ int main(void)
 					  }
 					  HAL_UART_Transmit(&huart2, "\nK set\r\n", 8, HAL_MAX_DELAY);
 				  }
-				  HAL_UART_Transmit(&huart2, "\nOui\r\n", 6, HAL_MAX_DELAY);
 			  }
 
 			  // Get K
 			  else if (strcmp(uart1_word, "GET_K") == 0) {
-			  	  HAL_UART_Transmit(&huart2, "\nK\r\n", 4, HAL_MAX_DELAY);
+				  size = sprintf(sprintf_buff, "%f", K);
+				  HAL_UART_Transmit(&huart1, sprintf_buff, size, HAL_MAX_DELAY);
 			  }
 
 			  // Get angle
 			  else if (strcmp(uart1_word, "GET_A") == 0) {
 				  angle = (int)(K * temp/100);
-				  HAL_UART_Transmit(&huart2, "\nA\r\n", 4, HAL_MAX_DELAY);
+				  size = sprintf(sprintf_buff, "%f", angle);
+				  HAL_UART_Transmit(&huart1, sprintf_buff, size, HAL_MAX_DELAY);
 			  }
 
 			  // Command undefined
@@ -190,17 +191,17 @@ int main(void)
 	  if (temp_flag == 1)
 	  {
 		  if (K == 0) {
-			  printf("Coeff is equal to 0, set it to get and angle\r\n");
+			  printf("Coeff is equal to 0, set it to get an angle\r\n");
 		  }
 		  else {
 			  angle = (int)(K * (temp/100));
 			  if (angle >= 0) {
-				  if (mot_angle(&hcan1, angle, MOT_ROT_CLK) != 0){
+				  if (mot_angle(&hcan1, (angle%380), MOT_ROT_CLK) != 0){
 					  printf("mot_angle command failed, error code %d\r\n", ret);
 				  }
 			  }
 			  else {
-				  if (mot_angle(&hcan1, -angle, MOT_ROT_ACLK) != 0){
+				  if (mot_angle(&hcan1, (360-(angle%360)), MOT_ROT_ACLK) != 0){
 					  printf("mot_angle command failed, error code %d\r\n", ret);
 				  }
 			  }
