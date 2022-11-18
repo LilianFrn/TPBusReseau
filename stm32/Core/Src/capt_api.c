@@ -5,10 +5,10 @@ extern I2C_HandleTypeDef hi2c1;
 
 static int32_t t_fine = 0;
 
-// Flag to chnage motor rotation
+// Flag to change motor rotation
 int temp_flag = 0;
 
-// Camibration factors
+// Calibration factors
 static unsigned short dig_T1;
 static signed short dig_T2;
 static signed short dig_T3;
